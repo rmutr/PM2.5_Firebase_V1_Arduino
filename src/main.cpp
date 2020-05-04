@@ -10,6 +10,11 @@
 //----------------------------------------------------------------------------- 
 #include <Arduino.h>
 
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 #include <WiFi.h> 
 #include <FirebaseESP32.h> 
 
@@ -35,10 +40,22 @@ int status_process      = 0;
 int status_process_mon  = 0; 
 int error = 0; 
 
-unsigned int pm_1  = 0; 
-unsigned int pm_25 = 0; 
-unsigned int pm_10 = 0; 
+unsigned int pm_1       = 0; 
+unsigned int pm_25      = 0; 
+unsigned int pm_10      = 0; 
 
+
+//----------------------------------------------------------------------------- 
+#define SCREEN_WIDTH 128 
+#define SCREEN_HEIGHT 64 
+
+#define OLED_RESET     4 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define NUMFLAKES     10 
+
+#define LOGO_HEIGHT   16
+#define LOGO_WIDTH    16
 
 //----------------------------------------------------------------------------- 
 #include <WiFiUdp.h> 
@@ -59,16 +76,20 @@ void NTP_Update();
 //----------------------------------------------------------------------------- 
 void StreamCallback(StreamData data); 
 void StreamCallback_Timeout(bool ptimeout); 
-int System_Update(String pitem, String pdespt); 
-int Log_Add(String pdatetime, String pdetail); 
-
-
-
+int Log_Add(String pdatetime, double pdetail_0, double pdetail_1, double pdetail_2); 
 
 
 //----------------------------------------------------------------------------- 
 void setup() { 
-  Serial.begin (115200, SERIAL_8N1, PIN_RX_0, PIN_TX_0); 
+  Serial.begin(9600, SERIAL_8N1, PIN_RX_0, PIN_TX_0); 
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    Serial.println(F("SSD1306 allocation failed")); 
+    for(;;); // Don't proceed, loop forever
+  } 
+  display.clearDisplay();
+
+  Disp_Info(); // Draw many lines
 
 //----------------------------------------------------------------------------- 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD); 
@@ -114,13 +135,15 @@ void loop() {
     sprintf(str_buff, "%04d-%02d-%02d %02d:%02d:%02d", ntp_Y, ntp_M, ntp_D, ntp_H, ntp_m, ntp_S); 
     Serial.print(str_buff); 
 
+    String bdatetime_str = str_buff; 
+    
+    sprintf(str_buff, " | %4d | %4d | %4d | ", pm_1, pm_25, pm_10); 
+    Serial.print(str_buff); 
+
     if (ntp_S_10 != (ntp_S / 10)) { 
       ntp_S_10 = (ntp_S / 10); 
-      error = Log_Add(str_buff, pm_1, pm_25, pm_10); 
-      Serial.print(" | "); 
-
-      Serial.print(Serial1.available()); 
-      Serial1.print('Jab'); 
+      error = Log_Add(bdatetime_str, (double)pm_1, (double)pm_25, (double)pm_10); 
+      Serial.print("Updated "); 
     } 
 
     Serial.println(); 
@@ -131,8 +154,37 @@ void loop() {
 } 
 
 
+//----------------------------------------------------------------------------- 
+void Disp_Info() { 
+  display.clearDisplay();
 
+  display.setTextSize(1); // Draw 2X-scale text
+  display.setTextColor(WHITE);
+  display.setCursor(40, 5);
+  display.println(F("Faculty 1"));
+  display.display();
 
+  display.setTextSize(1);
+  display.setCursor(53, 20);
+  display.println(F("of"));
+  display.display();
+
+  display.setTextSize(1);
+  display.setCursor(30, 35);
+  display.println(F("Engineering"));
+  display.display();
+
+  display.setTextSize(1);
+  display.setCursor(45, 50);
+  display.println(F("RMUTR"));
+  display.display();
+  
+  delay(2000);
+
+  display.clearDisplay();
+
+  
+}
 
 //----------------------------------------------------------------------------- 
 unsigned long sendNTPpacket(IPAddress& address) {
@@ -191,11 +243,11 @@ void NTP_Update() {
 
 //----------------------------------------------------------------------------- 
 void StreamCallback(StreamData data) { 
-  
+
 } 
 
 void StreamCallback_Timeout(bool ptimeout) { 
-  if (ptimeout != 0) { Serial1.println("Stream timeout, resume streaming..."); }
+  if (ptimeout != 0) { Serial.println("Stream timeout, resume streaming..."); }
 }
 
 int Log_Add(String pdatetime, double pdetail_0, double pdetail_1, double pdetail_2) { 
