@@ -31,6 +31,8 @@ String log_path    = "/Station_01/Log";
 
 #define PIN_RX_0            3 
 #define PIN_TX_0            1 
+#define PIN_RX_1            16 
+#define PIN_TX_1            17 
 
 char str_buff[200] = {0}; 
 unsigned long t_old = 0; 
@@ -40,9 +42,14 @@ int status_process      = 0;
 int status_process_mon  = 0; 
 int error = 0; 
 
-unsigned int pm_1       = 0; 
-unsigned int pm_25      = 0; 
-unsigned int pm_10      = 0; 
+unsigned int dix, dix_max = 0; 
+unsigned int dlen, dtype  = 0; 
+unsigned char din; 
+unsigned char dbuff[120]  = {0}; 
+
+unsigned int pm_1         = 0; 
+unsigned int pm_25        = 0; 
+unsigned int pm_10        = 0; 
 
 
 //----------------------------------------------------------------------------- 
@@ -81,15 +88,15 @@ int Log_Add(String pdatetime, double pdetail_0, double pdetail_1, double pdetail
 
 //----------------------------------------------------------------------------- 
 void setup() { 
-  Serial.begin(9600, SERIAL_8N1, PIN_RX_0, PIN_TX_0); 
+  Serial.begin (9600, SERIAL_8N1, PIN_RX_0, PIN_TX_0); 
+  Serial1.begin(9600, SERIAL_8N1, PIN_RX_1, PIN_TX_1); 
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
     Serial.println(F("SSD1306 allocation failed")); 
     for(;;); // Don't proceed, loop forever
   } 
-  display.clearDisplay();
 
-  Disp_Info(); // Draw many lines
+  Disp_Info(); delay(1000); 
 
 //----------------------------------------------------------------------------- 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD); 
@@ -127,17 +134,77 @@ void setup() {
 
 } 
 
+
 void loop() { 
+
+  while (Serial1.available() > 0) { 
+    din = Serial1.read(); 
+
+    if ((din == 0x42) || (din == 0x4D)) { 
+      if (din == 0x42) { dix = 0; dix_max = 0; dlen = 0; } 
+      if (din == 0x4D) { dix = 1; } 
+    } else { 
+      if (dix < 100) { dix++; } 
+      if (dix_max < dix) { dix_max = dix; } 
+    } 
+
+    dbuff[dix] = din; 
+
+    if (dix == 3) { 
+      dlen  = ((0x10 * (unsigned int)dbuff[2]) + (unsigned int)dbuff[3]); 
+
+      if ((dlen == 0x14) || (dlen == 0x1C)) { 
+        if (dlen == 0x14) { dtype = 3003; } 
+        if (dlen == 0x1C) { dtype = 7003; } 
+        dlen  = dlen + 2 + 1; 
+      } else { 
+        dlen  = 0; 
+        dtype = 0; 
+        pm_1  = 0; 
+        pm_25 = 0; 
+        pm_10 = 0; 
+      } 
+    } 
+
+    if ((dlen > 0) && (dix == dlen)) { 
+      pm_1  = ((0x10 * (unsigned int)dbuff[4]) + (unsigned int)dbuff[5]); 
+      pm_25 = ((0x10 * (unsigned int)dbuff[6]) + (unsigned int)dbuff[7]); 
+      pm_10 = ((0x10 * (unsigned int)dbuff[8]) + (unsigned int)dbuff[9]); 
+    } 
+  } 
 
   if (tmr_cnt == 0) { 
     NTP_Update(); 
+
+    display.clearDisplay(); 
+
+    display.setTextSize(1.5); 
+    display.setTextColor(WHITE); 
+
+    display.setCursor(60, 10); 
+    sprintf(str_buff, "%4d", pm_1); 
+    display.print(str_buff);
+    
+    display.setCursor(0, 10); 
+    sprintf(str_buff, "PM  1.0 = %4d ug/m3 ", pm_1); 
+    display.print(str_buff);
+    
+    display.setCursor(0, 25); 
+    sprintf(str_buff, "PM  2.5 = %4d ug/m3 ", pm_25); 
+    display.print(str_buff);
+    
+    display.setCursor(0, 40); 
+    sprintf(str_buff, "PM 10.0 = %4d ug/m3 ", pm_10); 
+    display.print(str_buff);
+
+    display.display(); 
 
     sprintf(str_buff, "%04d-%02d-%02d %02d:%02d:%02d", ntp_Y, ntp_M, ntp_D, ntp_H, ntp_m, ntp_S); 
     Serial.print(str_buff); 
 
     String bdatetime_str = str_buff; 
     
-    sprintf(str_buff, " | %4d | %4d | %4d | ", pm_1, pm_25, pm_10); 
+    sprintf(str_buff, " | %04d | %4d | %4d | %4d | ", dtype, pm_1, pm_25, pm_10); 
     Serial.print(str_buff); 
 
     if (ntp_S_10 != (ntp_S / 10)) { 
@@ -159,31 +226,21 @@ void Disp_Info() {
   display.clearDisplay();
 
   display.setTextSize(1); // Draw 2X-scale text
-  display.setTextColor(WHITE);
-  display.setCursor(40, 5);
-  display.println(F("Faculty 1"));
-  display.display();
-
-  display.setTextSize(1);
-  display.setCursor(53, 20);
-  display.println(F("of"));
-  display.display();
-
-  display.setTextSize(1);
-  display.setCursor(30, 35);
-  display.println(F("Engineering"));
-  display.display();
-
-  display.setTextSize(1);
-  display.setCursor(45, 50);
-  display.println(F("RMUTR"));
-  display.display();
+  display.setTextColor(WHITE); 
   
-  delay(2000);
+  display.setCursor(40, 5); 
+  display.println(F("Faculty")); 
 
-  display.clearDisplay();
+  display.setCursor(53, 20); 
+  display.println(F("of")); 
 
-  
+  display.setCursor(30, 35); 
+  display.println(F("Engineering")); 
+
+  display.setCursor(45, 50); 
+  display.println(F("RMUTR")); 
+
+  display.display(); 
 }
 
 //----------------------------------------------------------------------------- 
