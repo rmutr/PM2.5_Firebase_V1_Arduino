@@ -84,6 +84,7 @@ void NTP_Update();
 void StreamCallback(StreamData data); 
 void StreamCallback_Timeout(bool ptimeout); 
 int Log_Add(String pdatetime, double pdetail_0, double pdetail_1, double pdetail_2); 
+void Disp_Info(); 
 
 
 //----------------------------------------------------------------------------- 
@@ -263,7 +264,9 @@ unsigned long sendNTPpacket(IPAddress& address) {
   // you can send a packet requesting a timestamp:
   udp.beginPacket(address, 123); //NTP requests are to port 123
   udp.write(packetBuffer, NTP_PACKET_SIZE);
-  udp.endPacket();
+  udp.endPacket(); 
+
+  return 0;
 } 
 
 void NTP_Update() { 
