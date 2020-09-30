@@ -19,6 +19,7 @@ GitHub
     Git Bash>git clone https://github.com/rmutr/p1904_PM2.5_Firebase_Arduino.git 
     Git Bash>git clone https://github.com/rmutr/p1904_PM2.5_Firebase_Arduino.git [Foldername] 
     Git Bash>git submodule update --init --recursive 
+    Git Bash>git submodule update --remote --merge 
     Git Bash>git pull 
     Git Bash>git add . 
     Git Bash>git commit -m "[Comment]" 
