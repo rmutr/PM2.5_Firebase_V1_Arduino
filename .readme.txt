@@ -1,4 +1,4 @@
-RMUTR p1904 PM2.5 Firebase Arduino 
+RMUTR PM2.5 Firebase V1 Arduino 
 
 GitHub 
 ------------------------------------------------------------------------------- 
@@ -16,8 +16,8 @@ GitHub
     Git Bash>git config --list 
 5 Git Basic Command 
     Git Bash>git --version 
-    Git Bash>git clone https://github.com/rmutr/p1904_PM2.5_Firebase_Arduino.git 
-    Git Bash>git clone https://github.com/rmutr/p1904_PM2.5_Firebase_Arduino.git [Foldername] 
+    Git Bash>git clone https://github.com/rmutr/PM2.5_Firebase_V1_Arduino.git 
+    Git Bash>git clone https://github.com/rmutr/PM2.5_Firebase_V1_Arduino.git [Foldername] 
     Git Bash>git submodule update --init --recursive 
     Git Bash>git submodule update --remote --merge 
     Git Bash>git pull 
